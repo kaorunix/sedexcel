@@ -1,4 +1,4 @@
-package org.colibri.sedexcel
+package org.colibrifw.sedexcel
 
 import better.files._
 import java.io.FileInputStream
