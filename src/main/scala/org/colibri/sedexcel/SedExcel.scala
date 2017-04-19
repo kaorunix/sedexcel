@@ -16,17 +16,18 @@ object SedExcel {
   val configFilePath = "config.txt"
 
   def main(args: Array[String]): Unit = {
-    val (sourceFile, replaceFile, configFile) = args.toSeq match {
-      case (source:String)::(replace:String)::(config:String)::Nil => (Some(source), Some(replace), Some(config)) 
+    println("args="+args.toSeq.toString)
+    val (sourceFile, replaceFile, configFile) = args.toList match {
+      case (source:String)::(replace:String)::(config:String)::str => (Some(source), Some(replace), Some(config)) 
       case _ => (None, None, None)
     }
     val f = File(configFile.getOrElse(throw new IllegalArgumentException))
 //    f.lines.foreach { line => splitKV(line).map(kv => kv._1, kv._2) }
-    for (
+    val rep = for (
         line <- f.lines;
         kv <- splitKV(line)
       ) yield (kv)
-    
+    sedexcel(sourceFile.get, replaceFile.get, rep.toSeq)
   }
   
   def splitKV(s: String):Option[(String, String)] = {
@@ -40,10 +41,11 @@ object SedExcel {
   def sedexcel(fromexcelfile:String, toexcelfile:String, replacestrings:Seq[(String, String)]) = {
     val wb = getWorkbook(fromexcelfile)  
     for (
-        sheet <- (0 to wb.getNumberOfSheets()).map(i => wb.getSheetAt(i));
+        sheet <- (0 to wb.getNumberOfSheets() - 1).map(i => wb.getSheetAt(i));
         row <- sheet.iterator();
         cell <- row.iterator()
     ) sedCell(cell, replacestrings)
+    writeWorkbook(wb, toexcelfile)
 
     // 編集したいシート、列、セルを指定
 /*    val s:Sheet =wb.getSheetAt(0)
@@ -56,13 +58,13 @@ c.setCellType( Cell.CELL_TYPE_STRING );*/
   }
   
   def sedCell(cell: Cell, replacestring: Seq[(String, String)]):Unit = {
-    val datematch = """(\d{4})/(\d{1,2})/(\d{1,2})""".r
-    val nummatch = """-?\d+.?\d*""".r
-    val strmatch = """\S""".r
+    val datematch = """(\d{4}/\d{1,2}/\d{1,2})""".r
+    val nummatch = """(-?\d+.?\d*)""".r
+    val strmatch = """(\S)""".r
     replacestring.map (kv => kv._1 match {
-      case datematch(k) if cell.getDateCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => cell.setCellValue(kv._2)
-      case nummatch(k) if cell.getNumericCellValue == k.toDouble => cell.setCellValue(kv._2)
-      case strmatch(k) if cell.getStringCellValue == k => cell.setCellValue(kv._2)
+      case datematch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && DateUtil.isCellDateFormatted(cell) && cell.getDateCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => println("date="+kv._2.toString);cell.setCellValue(kv._2)
+      case nummatch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && cell.getNumericCellValue == k.toDouble => println("num="+kv._2.toString);cell.setCellValue(kv._2)
+      case strmatch(k) if cell.getCellType == Cell.CELL_TYPE_STRING && cell.getRichStringCellValue.getString == k => println("str="+kv._2.toString);cell.setCellValue(kv._2)
       case _ => () }
     )
   }
@@ -82,6 +84,7 @@ c.setCellType( Cell.CELL_TYPE_STRING );*/
   }
   
   def writeWorkbook(workbook:Workbook, excelfile: String):Unit = {
+    println("writeWorkbook")
     // 編集した内容の書き出し
     val output = File(excelfile)
     workbook.write( output.newOutputStream )
