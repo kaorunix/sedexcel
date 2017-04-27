@@ -11,18 +11,16 @@ import org.apache.poi.ss.usermodel.WorkbookFactory
 import scala.collection.JavaConversions._
 import java.text.SimpleDateFormat
 import java.lang.IllegalArgumentException
+//import org.colibrifw.sedexcel.CellManager
 
 object SedExcel {
-  val configFilePath = "config.txt"
-
   def main(args: Array[String]): Unit = {
     println("args="+args.toSeq.toString)
     val (sourceFile, replaceFile, configFile) = args.toList match {
       case (source:String)::(replace:String)::(config:String)::str => (Some(source), Some(replace), Some(config)) 
       case _ => (None, None, None)
     }
-    val f = File(configFile.getOrElse(throw new IllegalArgumentException))
-//    f.lines.foreach { line => splitKV(line).map(kv => kv._1, kv._2) }
+    val f = File(configFile.getOrElse(throw new IllegalArgumentException()))
     val rep = for (
         line <- f.lines;
         kv <- splitKV(line)
@@ -46,26 +44,19 @@ object SedExcel {
         cell <- row.iterator()
     ) sedCell(cell, replacestrings)
     writeWorkbook(wb, toexcelfile)
-
-    // 編集したいシート、列、セルを指定
-/*    val s:Sheet =wb.getSheetAt(0)
-    val r:Row = s.getRow(1)
-    val c:Cell = r.getCell(1)
-// この場合B2セルに「あいう」をセット
-c.setCellValue( "あいう" );
-c.setCellType( Cell.CELL_TYPE_STRING );*/
-
   }
   
   def sedCell(cell: Cell, replacestring: Seq[(String, String)]):Unit = {
+    //println(f"sedCell $cell $replacestring")
     val datematch = """(\d{4}/\d{1,2}/\d{1,2})""".r
     val nummatch = """(-?\d+.?\d*)""".r
     val strmatch = """(\S)""".r
     replacestring.map (kv => kv._1 match {
-      case datematch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && DateUtil.isCellDateFormatted(cell) && cell.getDateCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => println("date="+kv._2.toString);cell.setCellValue(kv._2)
-      case nummatch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && cell.getNumericCellValue == k.toDouble => println("num="+kv._2.toString);cell.setCellValue(kv._2)
-      case strmatch(k) if cell.getCellType == Cell.CELL_TYPE_STRING && cell.getRichStringCellValue.getString == k => println("str="+kv._2.toString);cell.setCellValue(kv._2)
-      case _ => () }
+      case datematch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && {println("date:" + cell.getNumericCellValue + ":" + kv._2); true} && DateUtil.isCellDateFormatted(cell) && cell.getDateCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => println("day="+kv._2);cell.setCellValue(kv._2)
+//      case datematch(k) if cell.getCellType == Cell.CELL_TYPE_STRING && {println("date:" + cell.getStringCellValue + ":" + kv._2); true} && DateUtil.isCellDateFormatted(cell) && cell.getStringCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => println("day="+kv._2);cell.setCellValue(kv._2)
+      case nummatch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && {println("num:" + cell.getNumericCellValue + ":" + kv._2); true} && cell.getNumericCellValue == k.toDouble  => println("num="+kv._2);cell.setCellValue(kv._2)
+      case strmatch(k) if cell.getCellType == Cell.CELL_TYPE_STRING && {println("str:" + cell.getStringCellValue + ":" + kv._2); true} && cell.getStringCellValue == k => println("str="+kv._2);cell.setCellValue(kv._2)
+      case a => ( println(new CellManager(cell) + "else:"+a) ) }
     )
   }
 
@@ -77,16 +68,33 @@ c.setCellType( Cell.CELL_TYPE_STRING );*/
       is.close
       wb
     } catch {
-      case e:Exception => ??? 
+      case e:Exception => throw e
     } finally {
 //      is.close() //ここで入力ストリームを閉じる
     }
   }
   
   def writeWorkbook(workbook:Workbook, excelfile: String):Unit = {
-    println("writeWorkbook")
     // 編集した内容の書き出し
     val output = File(excelfile)
     workbook.write( output.newOutputStream )
   }
+  
+  def parseArgs(args: List[String]): Either[Throwable, (String, String, String)] = {
+    val (sourceFile, replaceFile, configFile) = args match {
+      case (source:String)::(replace:String)::(config:String)::str => (Some(source), Some(replace), Some(config)) 
+      case _ => Left(new IllegalArgumentException())
+    }
+    sourceFile      
+    ???
+  }
+  
+   def isFile(path: String):Either[Throwable, Boolean] = {
+     try {
+       val f = File(path)
+       Right(f.isRegularFile && f.size > 0)
+     }catch {
+       case e:Exception => Left(e)
+     }
+   }
 }

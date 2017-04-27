@@ -1,4 +1,4 @@
-package org.colibri.sedexcel
+package org.colibrifw.sedexcel
 
 import org.scalatest._
 import better.files._
