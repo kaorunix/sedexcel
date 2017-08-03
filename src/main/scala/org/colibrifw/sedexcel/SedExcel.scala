@@ -14,6 +14,10 @@ import java.lang.IllegalArgumentException
 //import org.colibrifw.sedexcel.CellManager
 
 object SedExcel {
+  val datePrefix = "DATE"
+//  val numberPrefix = "NUM"
+  val pricePrefix = "PRICE"
+  val stringPrefix = "STR"
   def main(args: Array[String]): Unit = {
     println("args="+args.toSeq.toString)
     val (sourceFile, replaceFile, configFile) = args.toList match {
@@ -31,7 +35,7 @@ object SedExcel {
   def splitKV(s: String):Option[(String, String)] = {
     val pattarnMatch = """([^=]\S+)=(\S+)""".r
     s match {
-      case pattarnMatch(k,v) => Some(k,v)
+      case pattarnMatch(k,v) if (Seq(datePrefix, pricePrefix, stringPrefix).exists { k.startsWith(_)}) => Some(k,v)
       case _ => None
     }
   }
@@ -51,13 +55,38 @@ object SedExcel {
     val datematch = """(\d{4}/\d{1,2}/\d{1,2})""".r
     val nummatch = """(-?\d+.?\d*)""".r
     val strmatch = """(\S)""".r
-    replacestring.map (kv => kv._1 match {
+    println(new CellManager(cell))
+    Seq(datePrefix, pricePrefix, stringPrefix).map {
+      prefix => {
+        replacestring.filter(
+            cell.getCellType == Cell.CELL_TYPE_STRING
+            && cell.getStringCellValue.startsWith(datePrefix) 
+            && _._1.startsWith(datePrefix)
+            ).map {
+              kv => if (kv._1 == cell.getRichStringCellValue) { println("kv._1=" + kv._1);cell.setCellValue(kv._2) }
+            }
+      }
+    }
+/*    replacestring.map (kv => kv._1 match {
       case datematch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && {println("date:" + cell.getNumericCellValue + ":" + kv._2); true} && DateUtil.isCellDateFormatted(cell) && cell.getDateCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => println("day="+kv._2);cell.setCellValue(kv._2)
 //      case datematch(k) if cell.getCellType == Cell.CELL_TYPE_STRING && {println("date:" + cell.getStringCellValue + ":" + kv._2); true} && DateUtil.isCellDateFormatted(cell) && cell.getStringCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => println("day="+kv._2);cell.setCellValue(kv._2)
       case nummatch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && {println("num:" + cell.getNumericCellValue + ":" + kv._2); true} && cell.getNumericCellValue == k.toDouble  => println("num="+kv._2);cell.setCellValue(kv._2)
       case strmatch(k) if cell.getCellType == Cell.CELL_TYPE_STRING && {println("str:" + cell.getStringCellValue + ":" + kv._2); true} && cell.getStringCellValue == k => println("str="+kv._2);cell.setCellValue(kv._2)
       case a => ( println(new CellManager(cell) + "else:"+a) ) }
     )
+    def compCellDate(c:Cell, value:String):Boolean = {
+      DateUtil.isCellDateFormatted(cell) && cell.getDateCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(value)      
+    }*/
+    def setCellValueByType(prefix: String, cell: Cell, value: String) = {
+      case class CellValue(p: String)
+      prefix match {
+        case "DATE" => print("DATE " + value);cell.setCellType(Cell.CELL_TYPE_NUMERIC);cell.setCellValue(value)
+        case "PRICE" => print("PRICE " + value);cell.setCellType(Cell.CELL_TYPE_NUMERIC);cell.setCellValue(value) 
+        //case CellValue(pricePrefix) => cell.setCellType(Cell.CELL_TYPE_NUMERIC);cell.setCellValue(value)
+        case "STR" => print("STR" + value);cell.setCellType(Cell.CELL_TYPE_STRING);cell.setCellValue(value)
+      }
+      
+    }
   }
 
   def getWorkbook(excelfile: String):Workbook = {
