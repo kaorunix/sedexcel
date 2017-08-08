@@ -32,6 +32,9 @@ object SedExcel {
     sedexcel(sourceFile.get, replaceFile.get, rep.toSeq)
   }
   
+  /**
+   * key, valueに設定を保持する
+   */
   def splitKV(s: String):Option[(String, String)] = {
     val pattarnMatch = """([^=]\S+)=(\S+)""".r
     s match {
@@ -40,6 +43,56 @@ object SedExcel {
     }
   }
   
+  /**
+   * @param positionString 置き換え文字列
+   * @param fromexcelfile Excelテンプレートファイルパス
+   * @param toexcelfil 出力Excelファイルパス
+   */
+  def replaceCell(positionString: Seq[(String,String)] ,fromexcelfile: String, toexcelfile: String):Unit = {
+    val wb = getWorkbook(fromexcelfile)
+    for (
+         (position, value) <- positionString;
+         (sheet, x, y) <- expositon2positon(position);
+         cell <- Some(wb.getSheet(sheet).getRow(y).getCell(x))
+         
+    ) yield 
+    writeWorkbook(wb, toexcelfile)
+  }
+  
+  /**
+   * Excelのセル位置から数値の座標へ変換
+   */
+  def expositon2positon(position: String): Option[(String, Int, Int)] = {
+    val patternXY = "^([^:]*):([a-zA-Z]{1,3})([0-9]){1,10}".r
+    position match {
+      case patternXY(a: String, b: String, c: String) => Some((a, a2n(b), c.toInt)) 
+      case _ => None
+    }
+  }
+  
+  /**
+   * Excelのセル位置を表すアルファベットを数値に置き換える
+   */
+  def a2n(ascii: String): Int = {
+    val unit = 'Z'.toInt - 'A'.toInt
+    ascii.toUpperCase  // 大文字にそろえる
+         .toList       // Charに変換
+         .map(a => a.toInt - 65) // ASCIIコードから数字に変換
+         .foldLeft(0)((b,c) => b * unit + c) // 前桁
+  }
+  
+  /**
+   * @param c 変更
+   */
+  def setCellValueByType(c: Cell, value: String) = {
+    case class CellValue(p: String)
+    val cell = new CellManager(c)
+    cell.setValue(value)      
+    }
+
+    /**
+   * 文字列を置き換える
+   */
   def sedexcel(fromexcelfile:String, toexcelfile:String, replacestrings:Seq[(String, String)]) = {
     val wb = getWorkbook(fromexcelfile)  
     for (
@@ -77,7 +130,7 @@ object SedExcel {
     def compCellDate(c:Cell, value:String):Boolean = {
       DateUtil.isCellDateFormatted(cell) && cell.getDateCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(value)      
     }*/
-    def setCellValueByType(prefix: String, cell: Cell, value: String) = {
+    /*def setCellValueByType(prefix: String, cell: Cell, value: String) = {
       case class CellValue(p: String)
       prefix match {
         case "DATE" => print("DATE " + value);cell.setCellType(Cell.CELL_TYPE_NUMERIC);cell.setCellValue(value)
@@ -86,7 +139,7 @@ object SedExcel {
         case "STR" => print("STR" + value);cell.setCellType(Cell.CELL_TYPE_STRING);cell.setCellValue(value)
       }
       
-    }
+    }*/
   }
 
   def getWorkbook(excelfile: String):Workbook = {
