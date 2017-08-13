@@ -25,11 +25,12 @@ object SedExcel {
       case _ => (None, None, None)
     }
     val f = File(configFile.getOrElse(throw new IllegalArgumentException()))
+    println("file get")
     val rep = for (
         line <- f.lines;
         kv <- splitKV(line)
       ) yield (kv)
-    sedexcel(sourceFile.get, replaceFile.get, rep.toSeq)
+    replaceCell(sourceFile.get, replaceFile.get, rep.toSeq)
   }
   
   /**
@@ -38,7 +39,8 @@ object SedExcel {
   def splitKV(s: String):Option[(String, String)] = {
     val pattarnMatch = """([^=]\S+)=(\S+)""".r
     s match {
-      case pattarnMatch(k,v) if (Seq(datePrefix, pricePrefix, stringPrefix).exists { k.startsWith(_)}) => Some(k,v)
+      case pattarnMatch(k,v) => Some(k,v)
+//      case pattarnMatch(k,v) if (Seq(datePrefix, pricePrefix, stringPrefix).exists { k.startsWith(_)}) => Some(k,v)
       case _ => None
     }
   }
@@ -48,14 +50,18 @@ object SedExcel {
    * @param fromexcelfile Excelテンプレートファイルパス
    * @param toexcelfil 出力Excelファイルパス
    */
-  def replaceCell(positionString: Seq[(String,String)] ,fromexcelfile: String, toexcelfile: String):Unit = {
+  def replaceCell(fromexcelfile: String, toexcelfile: String, positionString: Seq[(String,String)]):Unit = {
+    println(f"replaceCell positionString=$positionString")
     val wb = getWorkbook(fromexcelfile)
     for (
          (position, value) <- positionString;
          (sheet, x, y) <- expositon2positon(position);
          cell <- Some(wb.getSheet(sheet).getRow(y).getCell(x))
-         
-    ) yield 
+    ) yield {
+      val c = new CellManager(cell, wb)
+      c.setValue(value)
+    }
+    wb.getCreationHelper().createFormulaEvaluator().evaluateAll()
     writeWorkbook(wb, toexcelfile)
   }
   
@@ -63,9 +69,9 @@ object SedExcel {
    * Excelのセル位置から数値の座標へ変換
    */
   def expositon2positon(position: String): Option[(String, Int, Int)] = {
-    val patternXY = "^([^:]*):([a-zA-Z]{1,3})([0-9]){1,10}".r
+    val patternXY = "^([^:]*):([a-zA-Z]{1,3})([0-9]{1,10})".r
     position match {
-      case patternXY(a: String, b: String, c: String) => Some((a, a2n(b), c.toInt)) 
+      case patternXY(a: String, b: String, c: String) if (c.toInt > 0) => println(f"sheet=$a x=$b y=$c");Some((a, a2n(b), c.toInt - 1)) 
       case _ => None
     }
   }
@@ -74,26 +80,28 @@ object SedExcel {
    * Excelのセル位置を表すアルファベットを数値に置き換える
    */
   def a2n(ascii: String): Int = {
-    val unit = 'Z'.toInt - 'A'.toInt
-    ascii.toUpperCase  // 大文字にそろえる
+    val unit = 'Z'.toInt - 'A'.toInt + 1
+    val asciilist = ascii.toUpperCase  // 大文字にそろえる
          .toList       // Charに変換
-         .map(a => a.toInt - 65) // ASCIIコードから数字に変換
-         .foldLeft(0)((b,c) => b * unit + c) // 前桁
+         .map(a => a.toInt - 64) // ASCIIコードから数字に変換
+    println(f"a2n unit $unit $asciilist")
+    asciilist     
+         .foldLeft(0)((b,c) => b * unit + c) - 1// 前桁
   }
   
   /**
    * @param c 変更
    */
-  def setCellValueByType(c: Cell, value: String) = {
+/*  def setCellValueByType(c: Cell, value: String) = {
     case class CellValue(p: String)
     val cell = new CellManager(c)
     cell.setValue(value)      
-    }
+  }*/
 
     /**
    * 文字列を置き換える
    */
-  def sedexcel(fromexcelfile:String, toexcelfile:String, replacestrings:Seq[(String, String)]) = {
+/*  def sedexcel(fromexcelfile:String, toexcelfile:String, replacestrings:Seq[(String, String)]) = {
     val wb = getWorkbook(fromexcelfile)  
     for (
         sheet <- (0 to wb.getNumberOfSheets() - 1).map(i => wb.getSheetAt(i));
@@ -101,9 +109,9 @@ object SedExcel {
         cell <- row.iterator()
     ) sedCell(cell, replacestrings)
     writeWorkbook(wb, toexcelfile)
-  }
+  }*/
   
-  def sedCell(cell: Cell, replacestring: Seq[(String, String)]):Unit = {
+/*  def sedCell(cell: Cell, replacestring: Seq[(String, String)]):Unit = {
     //println(f"sedCell $cell $replacestring")
     val datematch = """(\d{4}/\d{1,2}/\d{1,2})""".r
     val nummatch = """(-?\d+.?\d*)""".r
@@ -119,7 +127,7 @@ object SedExcel {
               kv => if (kv._1 == cell.getRichStringCellValue) { println("kv._1=" + kv._1);cell.setCellValue(kv._2) }
             }
       }
-    }
+    }*/
 /*    replacestring.map (kv => kv._1 match {
       case datematch(k) if cell.getCellType == Cell.CELL_TYPE_NUMERIC && {println("date:" + cell.getNumericCellValue + ":" + kv._2); true} && DateUtil.isCellDateFormatted(cell) && cell.getDateCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => println("day="+kv._2);cell.setCellValue(kv._2)
 //      case datematch(k) if cell.getCellType == Cell.CELL_TYPE_STRING && {println("date:" + cell.getStringCellValue + ":" + kv._2); true} && DateUtil.isCellDateFormatted(cell) && cell.getStringCellValue == (new SimpleDateFormat("yyyy/MM/dd")).parse(k) => println("day="+kv._2);cell.setCellValue(kv._2)
@@ -140,7 +148,7 @@ object SedExcel {
       }
       
     }*/
-  }
+//  }
 
   def getWorkbook(excelfile: String):Workbook = {
     try {
@@ -159,6 +167,7 @@ object SedExcel {
   def writeWorkbook(workbook:Workbook, excelfile: String):Unit = {
     // 編集した内容の書き出し
     val output = File(excelfile)
+    println("writeWorkbook")
     workbook.write( output.newOutputStream )
   }
   

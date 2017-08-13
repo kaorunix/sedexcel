@@ -4,7 +4,7 @@ import org.scalatest._
 import better.files._
 
 class SedExcelSpec extends FlatSpec with Matchers {
-  "splitKV" should "get parametors" in {
+  /*"splitKV" should "get parametors" in {
     SedExcel.splitKV("""STRabc=123""") should be (Some(("STRabc", "123")))
     SedExcel.splitKV("""PRICEabc=12345""") should be (Some(("PRICEabc", "12345")))
     SedExcel.splitKV("""DATEabc=2017/04/27""") should be (Some(("DATEabc", "2017/04/27")))
@@ -25,7 +25,7 @@ class SedExcelSpec extends FlatSpec with Matchers {
         } 
       }
     }
-  }
+  }*/
 
   "getWorkbook" should "open excel file" in {
     val wk = SedExcel.getWorkbook("test/テンプレート.xlsx")
