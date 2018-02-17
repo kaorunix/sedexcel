@@ -4,27 +4,37 @@ This program can replace string in excel file.
 
 ## How to use
 
-Make config file, connected key and value with equal(=). Omit space between equal. You can use String, Number, Date as key.
+Make config file, connected key and value with equal(=). Omit space between equal.
+
 
 ### key
 
-* Date you can assign like `1999/99/99`
-* Number you can assign like `999999`
-* String you can assign like `name`
+You should assign cell position like `AB132`
+This cell will replace the value of right side.
 
 ### value
 
-* Date you can assign like `2017/11/22`
-* Number you can assign like `-100.01`
-* String you can assign any words. You can use UTF-8.
+You can use String, Number, Date as value.
+The value will be treated as string.
 
 ### config example
+
 ```
-1999/99/99=2017/11/22
-999999=-100.01
-name=鈴木
+BA15=2017/11/22
+BB15=-100.01
+D3=鈴木
 ```
 
 ### make excel file
-Create a excel file embedding words which put as key in config file. SedExcel will replace from words which are same charactors as key, to value. You can same words in the excel file, all of same words will replace same values.
 
+1. Create a excel file as templete with xlsx as extention.
+2. Create a config file.
+3. Execute sedexcel.sh like follows.
+
+```
+$ sedexcel.sh TEMPLATE.xlsx ABC.conf
+```
+
+##### result
+
+The original excel file will rename TEMPLATE_old.xlsx. And original name file will be created, the cells, which were configured in config file, will be embeded values.
