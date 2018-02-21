@@ -25,7 +25,7 @@ class SedExcelSpec extends FlatSpec with Matchers {
   }
 
   "getWorkbook" should "open excel file" in {
-    val wk = SedExcel.getWorkbook("test/テンプレート.xlsx")
+    val wk = SedExcel.getWorkbook("test/templete.xlsx")
     println("WORKBOOK:" + wk.toString)
     true should === (true)
   }
